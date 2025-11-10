@@ -1,0 +1,3 @@
+D:/aaaSchool/softengineer/lab3/build/CMakeFiles/simple_ledger.dir
+D:/aaaSchool/softengineer/lab3/build/CMakeFiles/ALL_BUILD.dir
+D:/aaaSchool/softengineer/lab3/build/CMakeFiles/ZERO_CHECK.dir
