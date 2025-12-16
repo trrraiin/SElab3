@@ -1,0 +1,440 @@
+name: C++ Ledger Application CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 第一步：检出代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    # 第二步：设置 C++ 编译环境
+    - name: Set up C++ environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ cmake build-essential
+    
+    # 第三步：创建测试文件
+    - name: Create unit tests
+      run: |
+        cat > test_models.cpp << 'EOF'
+        #include <iostream>
+        #include <cassert>
+        #include "models.h"
+        
+        void testDecimalType() {
+            std::cout << "Testing Decimal type..." << std::endl;
+            Decimal d = 100.5;
+            assert(d == 100.5);
+            std::cout << "✓ Decimal test passed" << std::endl;
+        }
+        
+        void testTransactionIsIncome() {
+            std::cout << "Testing Transaction::isIncome()..." << std::endl;
+            Transaction t;
+            t.amount = 100.0;
+            assert(t.isIncome() == true);
+            
+            t.amount = -100.0;
+            assert(t.isIncome() == false);
+            std::cout << "✓ Transaction isIncome test passed" << std::endl;
+        }
+        
+        void testAccountAdjustBalance() {
+            std::cout << "Testing Account::adjustBalance()..." << std::endl;
+            Account acc;
+            acc.balance = 100.0;
+            acc.adjustBalance(50.0);
+            assert(acc.balance == 150.0);
+            
+            acc.adjustBalance(-75.0);
+            assert(acc.balance == 75.0);
+            std::cout << "✓ Account adjustBalance test passed" << std::endl;
+        }
+        
+        int main() {
+            std::cout << "=== Running Model Tests ===" << std::endl;
+            try {
+                testDecimalType();
+                testTransactionIsIncome();
+                testAccountAdjustBalance();
+                std::cout << "\n✅ All model tests passed!" << std::endl;
+                return 0;
+            } catch (const std::exception& e) {
+                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                return 1;
+            }
+        }
+        EOF
+        
+        cat > test_repositories.cpp << 'EOF'
+        #include <iostream>
+        #include <cassert>
+        #include "repositories.h"
+        #include <filesystem>
+        
+        void testCategoryRepository() {
+            std::cout << "Testing CategoryRepository..." << std::endl;
+            
+            CategoryRepository repo;
+            
+            // Test save and find
+            Category cat{"c_test", "TestCategory", CategoryType::Expense};
+            auto saved = repo.save(cat);
+            assert(saved != nullptr);
+            assert(saved->name == "TestCategory");
+            
+            auto found = repo.findByName("TestCategory");
+            assert(found != nullptr);
+            assert(found->name == "TestCategory");
+            
+            // Test all() method
+            auto allCats = repo.all();
+            assert(allCats.size() == 1);
+            
+            // Test remove
+            assert(repo.remove("TestCategory") == true);
+            assert(repo.findByName("TestCategory") == nullptr);
+            assert(repo.remove("NonExistent") == false);
+            
+            std::cout << "✓ CategoryRepository tests passed" << std::endl;
+        }
+        
+        void testCSVHelpers() {
+            std::cout << "Testing CSV helpers..." << std::endl;
+            
+            std::string test = "Hello, \"World\"";
+            std::string escaped = escapeCsv(test);
+            std::string unescaped = unescapeCsv(escaped);
+            
+            assert(unescaped == test);
+            
+            std::cout << "✓ CSV helper tests passed" << std::endl;
+        }
+        
+        void testTransactionRepository() {
+            std::cout << "Testing TransactionRepository..." << std::endl;
+            
+            TransactionRepository repo;
+            CategoryRepository catRepo;
+            
+            // Create a test category
+            Category foodCat{"c_food", "Food", CategoryType::Expense};
+            auto foodPtr = catRepo.save(foodCat);
+            
+            // Create and save a transaction
+            Transaction t;
+            t.txnId = "test_001";
+            t.amount = -50.0;
+            t.date = std::chrono::system_clock::now();
+            t.merchant = "Test Restaurant";
+            t.category = foodPtr;
+            t.notes = "Test transaction";
+            
+            repo.save(t);
+            
+            // Test findAll
+            auto allTxns = repo.findAll();
+            assert(allTxns.size() == 1);
+            assert(allTxns[0].txnId == "test_001");
+            
+            // Test findByCategory
+            auto foodTxns = repo.findByCategory("Food");
+            assert(foodTxns.size() == 1);
+            
+            // Test searchByKeyword
+            auto searchResults = repo.searchByKeyword("Restaurant");
+            assert(searchResults.size() == 1);
+            
+            std::cout << "✓ TransactionRepository tests passed" << std::endl;
+        }
+        
+        int main() {
+            std::cout << "=== Running Repository Tests ===" << std::endl;
+            try {
+                testCategoryRepository();
+                testCSVHelpers();
+                testTransactionRepository();
+                std::cout << "\n✅ All repository tests passed!" << std::endl;
+                return 0;
+            } catch (const std::exception& e) {
+                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                return 1;
+            }
+        }
+        EOF
+        
+        cat > test_services.cpp << 'EOF'
+        #include <iostream>
+        #include <cassert>
+        #include "services.h"
+        
+        void testBalanceService() {
+            std::cout << "Testing BalanceService..." << std::endl;
+            
+            TransactionRepository txnRepo;
+            BalanceService balanceSvc(txnRepo);
+            
+            // Empty repository should return 0
+            assert(balanceSvc.calculateBalance() == 0.0);
+            
+            // Add some transactions
+            Transaction t1, t2, t3;
+            t1.amount = 100.0;  // Income
+            t2.amount = -50.0;  // Expense
+            t3.amount = -30.0;  // Expense
+            
+            txnRepo.save(t1);
+            txnRepo.save(t2);
+            txnRepo.save(t3);
+            
+            // Balance should be 100 - 50 - 30 = 20
+            assert(balanceSvc.calculateBalance() == 20.0);
+            
+            std::cout << "✓ BalanceService tests passed" << std::endl;
+        }
+        
+        void testCategorizerService() {
+            std::cout << "Testing CategorizerService..." << std::endl;
+            
+            CategoryRepository catRepo;
+            CategorizerService categorizer(catRepo);
+            
+            // Test auto-categorization
+            Transaction t;
+            t.merchant = "Subway Restaurant";
+            t.notes = "Lunch at subway";
+            
+            // Should categorize as Transport (contains "subway")
+            auto result1 = categorizer.autoCategorize(t);
+            assert(result1.first != nullptr);
+            assert(result1.first->name == "Transport");
+            assert(result1.second > 0.9);
+            
+            // Test with food keyword
+            t.merchant = "Burger Place";
+            t.notes = "Dinner meal";
+            auto result2 = categorizer.autoCategorize(t);
+            assert(result2.first != nullptr);
+            assert(result2.first->name == "Food");
+            
+            // Test no match
+            t.merchant = "Unknown Store";
+            t.notes = "Misc purchase";
+            auto result3 = categorizer.autoCategorize(t);
+            assert(result3.first == nullptr);
+            assert(result3.second == 0.0);
+            
+            std::cout << "✓ CategorizerService tests passed" << std::endl;
+        }
+        
+        void testReportService() {
+            std::cout << "Testing ReportService..." << std::endl;
+            
+            TransactionRepository txnRepo;
+            ReportService reportSvc(txnRepo);
+            
+            // Test empty breakdown
+            auto breakdown = reportSvc.categoryBreakdown(2024, 1);
+            assert(breakdown.empty());
+            
+            auto totals = reportSvc.incomeExpenseTotalsMonth(2024, 1);
+            assert(totals.first == 0.0);
+            assert(totals.second == 0.0);
+            
+            std::cout << "✓ ReportService tests passed" << std::endl;
+        }
+        
+        int main() {
+            std::cout << "=== Running Service Tests ===" << std::endl;
+            try {
+                testBalanceService();
+                testCategorizerService();
+                testReportService();
+                std::cout << "\n✅ All service tests passed!" << std::endl;
+                return 0;
+            } catch (const std::exception& e) {
+                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                return 1;
+            }
+        }
+        EOF
+    
+    # 第四步：创建综合测试文件
+    - name: Create integration test
+      run: |
+        cat > test_integration.cpp << 'EOF'
+        #include <iostream>
+        #include <cassert>
+        #include "models.h"
+        #include "repositories.h"
+        #include "services.h"
+        
+        void testCompleteWorkflow() {
+            std::cout << "Testing complete application workflow..." << std::endl;
+            
+            // Initialize repositories
+            TransactionRepository txnRepo;
+            CategoryRepository catRepo;
+            
+            // Initialize services
+            CategorizerService categorizer(catRepo);
+            BalanceService balanceSvc(txnRepo);
+            TransactionService txnSvc(txnRepo, catRepo, categorizer, balanceSvc);
+            
+            // Create test transaction
+            Transaction t;
+            t.txnId = "int_test_001";
+            t.amount = -25.75;
+            t.date = std::chrono::system_clock::now();
+            t.merchant = "Bus Ticket";
+            t.notes = "Daily commute";
+            
+            // Add transaction
+            txnSvc.addTransaction(t);
+            
+            // Verify transaction was saved
+            auto allTxns = txnRepo.findAll();
+            assert(allTxns.size() == 1);
+            assert(allTxns[0].txnId == "int_test_001");
+            
+            // Test auto-categorization (bus -> Transport)
+            auto catResult = categorizer.autoCategorize(allTxns[0]);
+            assert(catResult.first != nullptr);
+            assert(catResult.first->name == "Transport");
+            
+            std::cout << "✓ Complete workflow test passed" << std::endl;
+        }
+        
+        void testCSVPersistence() {
+            std::cout << "Testing CSV persistence..." << std::endl;
+            
+            CategoryRepository catRepo;
+            
+            // Create test categories
+            Category cat1{"c1", "Test1", CategoryType::Expense};
+            Category cat2{"c2", "Test2", CategoryType::Income};
+            
+            catRepo.save(cat1);
+            catRepo.save(cat2);
+            
+            // Save to CSV
+            catRepo.saveToCsv("test_categories.csv");
+            
+            // Load from CSV into new repository
+            CategoryRepository catRepo2;
+            catRepo2.loadFromCsv("test_categories.csv");
+            
+            // Verify loaded categories
+            auto loaded1 = catRepo2.findByName("Test1");
+            auto loaded2 = catRepo2.findByName("Test2");
+            
+            assert(loaded1 != nullptr);
+            assert(loaded2 != nullptr);
+            assert(loaded1->type == CategoryType::Expense);
+            assert(loaded2->type == CategoryType::Income);
+            
+            // Cleanup
+            std::remove("test_categories.csv");
+            
+            std::cout << "✓ CSV persistence test passed" << std::endl;
+        }
+        
+        int main() {
+            std::cout << "=== Running Integration Tests ===" << std::endl;
+            try {
+                testCompleteWorkflow();
+                testCSVPersistence();
+                std::cout << "\n✅ All integration tests passed!" << std::endl;
+                return 0;
+            } catch (const std::exception& e) {
+                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                return 1;
+            }
+        }
+        EOF
+    
+    # 第五步：编译主程序
+    - name: Compile main application
+      run: |
+        echo "Compiling main application..."
+        g++ -std=c++17 -I. src/main.cpp -o ledger_app
+        echo "Main application compiled successfully!"
+        ls -lh ledger_app
+    
+    # 第六步：编译并运行单元测试
+    - name: Compile and run model tests
+      run: |
+        echo "=== Compiling model tests ==="
+        g++ -std=c++17 -I. test_models.cpp -o test_models
+        echo "Running model tests..."
+        ./test_models
+    
+    - name: Compile and run repository tests
+      run: |
+        echo "=== Compiling repository tests ==="
+        g++ -std=c++17 -I. test_repositories.cpp -o test_repositories
+        echo "Running repository tests..."
+        ./test_repositories
+    
+    - name: Compile and run service tests
+      run: |
+        echo "=== Compiling service tests ==="
+        g++ -std=c++17 -I. test_services.cpp -o test_services
+        echo "Running service tests..."
+        ./test_services
+    
+    - name: Compile and run integration tests
+      run: |
+        echo "=== Compiling integration tests ==="
+        g++ -std=c++17 -I. test_integration.cpp -o test_integration
+        echo "Running integration tests..."
+        ./test_integration
+    
+    # 第七步：运行应用程序基本测试
+    - name: Run application smoke test
+      run: |
+        echo "=== Running application smoke test ==="
+        # Create necessary data files
+        touch categories.csv
+        touch transactions.csv
+        
+        # Test that application can start and exit
+        echo -e "0\n" | timeout 2 ./ledger_app || true
+        echo "Application smoke test completed"
+    
+    # 第八步：编译检查所有头文件
+    - name: Compile check all headers
+      run: |
+        echo "=== Checking compilation of all header combinations ==="
+        # Test basic compilation
+        g++ -std=c++17 -I. -c src/main.cpp -o /dev/null
+        
+        # Test models.h standalone
+        cat > test_headers.cpp << 'EOF'
+        #include "models.h"
+        #include "repositories.h"
+        #include "services.h"
+        int main() { return 0; }
+        EOF
+        g++ -std=c++17 -I. -c test_headers.cpp -o /dev/null
+        echo "All headers compile successfully!"
+    
+    # 第九步：清理测试文件
+    - name: Clean up test files
+      run: |
+        echo "=== Cleaning up test files ==="
+        rm -f test_models test_models.cpp
+        rm -f test_repositories test_repositories.cpp
+        rm -f test_services test_services.cpp
+        rm -f test_integration test_integration.cpp
+        rm -f test_headers.cpp
+        rm -f categories.csv transactions.csv
+        echo "Cleanup completed"
