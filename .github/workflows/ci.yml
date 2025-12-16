@@ -1,42 +1,40 @@
 name: C++ Ledger Application CI
-
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     
     steps:
-    # 第一步：检出代码
+    #检出代码，将仓库代码下载到 CI 环境
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    # 第二步：设置 C++ 编译环境
+    #设置 C++ 编译环境
     - name: Set up C++ environment
       run: |
         sudo apt-get update
         sudo apt-get install -y g++ cmake build-essential
     
-    # 第三步：查看项目结构
+    # 查看项目结构，确认文件位置和结构
     - name: Check project structure
       run: |
         echo "=== Project Structure ==="
         find . -type f -name "*.h" -o -name "*.cpp" -o -name "*.yml" | sort
         echo ""
         echo "=== Include directory ==="
-        ls -la include/
+        ls -la include/  #显示头文件目录
         echo ""
         echo "=== Source directory ==="
-        ls -la src/
+        ls -la src/      #显示源文件目录
     
-    # 第四步：创建测试文件（放在include目录同级）
+    #创建测试文件
     - name: Create unit tests
       run: |
-        # 创建测试文件
+        #测试数据结构和基本功能
         cat > test_models.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
@@ -46,7 +44,7 @@ jobs:
             std::cout << "Testing Decimal type..." << std::endl;
             Decimal d = 100.5;
             assert(d == 100.5);
-            std::cout << "✓ Decimal test passed" << std::endl;
+            std::cout << "Decimal test passed" << std::endl;
         }
         
         void testTransactionIsIncome() {
@@ -57,7 +55,7 @@ jobs:
             
             t.amount = -100.0;
             assert(t.isIncome() == false);
-            std::cout << "✓ Transaction isIncome test passed" << std::endl;
+            std::cout << "Transaction isIncome test passed" << std::endl;
         }
         
         void testAccountAdjustBalance() {
@@ -69,7 +67,7 @@ jobs:
             
             acc.adjustBalance(-75.0);
             assert(acc.balance == 75.0);
-            std::cout << "✓ Account adjustBalance test passed" << std::endl;
+            std::cout << "Account adjustBalance test passed" << std::endl;
         }
         
         int main() {
@@ -78,15 +76,16 @@ jobs:
                 testDecimalType();
                 testTransactionIsIncome();
                 testAccountAdjustBalance();
-                std::cout << "\n✅ All model tests passed!" << std::endl;
+                std::cout << "\nAll model tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
         EOF
         
+        #测试数据存储
         cat > test_repositories.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
@@ -98,7 +97,7 @@ jobs:
             
             CategoryRepository repo;
             
-            // Test save and find
+            //save and find
             Category cat{"c_test", "TestCategory", CategoryType::Expense};
             auto saved = repo.save(cat);
             assert(saved != nullptr);
@@ -108,16 +107,16 @@ jobs:
             assert(found != nullptr);
             assert(found->name == "TestCategory");
             
-            // Test all() method
+            //all() method
             auto allCats = repo.all();
             assert(allCats.size() == 1);
             
-            // Test remove
+            //remove
             assert(repo.remove("TestCategory") == true);
             assert(repo.findByName("TestCategory") == nullptr);
             assert(repo.remove("NonExistent") == false);
             
-            std::cout << "✓ CategoryRepository tests passed" << std::endl;
+            std::cout << "CategoryRepository tests passed" << std::endl;
         }
         
         void testCSVHelpers() {
@@ -129,7 +128,7 @@ jobs:
             
             assert(unescaped == test);
             
-            std::cout << "✓ CSV helper tests passed" << std::endl;
+            std::cout << "CSV helper tests passed" << std::endl;
         }
         
         void testTransactionRepository() {
@@ -138,11 +137,11 @@ jobs:
             TransactionRepository repo;
             CategoryRepository catRepo;
             
-            // Create a test category
+            //Create a test category
             Category foodCat{"c_food", "Food", CategoryType::Expense};
             auto foodPtr = catRepo.save(foodCat);
             
-            // Create and save a transaction
+            //Create and save a transaction
             Transaction t;
             t.txnId = "test_001";
             t.amount = -50.0;
@@ -153,20 +152,20 @@ jobs:
             
             repo.save(t);
             
-            // Test findAll
+            //findAll
             auto allTxns = repo.findAll();
             assert(allTxns.size() == 1);
             assert(allTxns[0].txnId == "test_001");
             
-            // Test findByCategory
+            //findByCategory
             auto foodTxns = repo.findByCategory("Food");
             assert(foodTxns.size() == 1);
             
-            // Test searchByKeyword
+            //searchByKeyword
             auto searchResults = repo.searchByKeyword("Restaurant");
             assert(searchResults.size() == 1);
             
-            std::cout << "✓ TransactionRepository tests passed" << std::endl;
+            std::cout << "TransactionRepository tests passed" << std::endl;
         }
         
         int main() {
@@ -175,15 +174,16 @@ jobs:
                 testCategoryRepository();
                 testCSVHelpers();
                 testTransactionRepository();
-                std::cout << "\n✅ All repository tests passed!" << std::endl;
+                std::cout << "\nAll repository tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
         EOF
         
+        #测试业务逻辑
         cat > test_services.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
@@ -200,18 +200,18 @@ jobs:
             
             // Add some transactions
             Transaction t1, t2, t3;
-            t1.amount = 100.0;  // Income
-            t2.amount = -50.0;  // Expense
-            t3.amount = -30.0;  // Expense
+            t1.amount = 100.0;//Income
+            t2.amount = -50.0;//Expense
+            t3.amount = -30.0;//Expense
             
             txnRepo.save(t1);
             txnRepo.save(t2);
             txnRepo.save(t3);
             
-            // Balance should be 100 - 50 - 30 = 20
+            //100 - 50 - 30 = 20
             assert(balanceSvc.calculateBalance() == 20.0);
             
-            std::cout << "✓ BalanceService tests passed" << std::endl;
+            std::cout << "BalanceService tests passed" << std::endl;
         }
         
         void testCategorizerService() {
@@ -220,12 +220,12 @@ jobs:
             CategoryRepository catRepo;
             CategorizerService categorizer(catRepo);
             
-            // Test auto-categorization with lowercase to match keyword map
+            //Test auto-categorization with lowercase to match keyword map
             Transaction t;
             t.merchant = "subway restaurant";  // lowercase to match "subway"
             t.notes = "lunch at subway";
             
-            // Should categorize as Transport (contains "subway")
+            //Should categorize as Transport (contains "subway")
             auto result1 = categorizer.autoCategorize(t);
             if (result1.first != nullptr) {
                 std::cout << "Categorized as: " << result1.first->name << " (confidence: " << result1.second << ")" << std::endl;
@@ -235,7 +235,7 @@ jobs:
                 std::cout << "Note: Categorizer returned null (testing infrastructure)" << std::endl;
             }
             
-            std::cout << "✓ CategorizerService tests passed" << std::endl;
+            std::cout << "CategorizerService tests passed" << std::endl;
         }
         
         void testReportService() {
@@ -244,7 +244,6 @@ jobs:
             TransactionRepository txnRepo;
             ReportService reportSvc(txnRepo);
             
-            // Test empty breakdown
             auto breakdown = reportSvc.categoryBreakdown(2024, 1);
             assert(breakdown.empty());
             
@@ -252,7 +251,7 @@ jobs:
             assert(totals.first == 0.0);
             assert(totals.second == 0.0);
             
-            std::cout << "✓ ReportService tests passed" << std::endl;
+            std::cout << "ReportService tests passed" << std::endl;
         }
         
         int main() {
@@ -261,15 +260,16 @@ jobs:
                 testBalanceService();
                 testCategorizerService();
                 testReportService();
-                std::cout << "\n✅ All service tests passed!" << std::endl;
+                std::cout << "\nAll service tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
         EOF
         
+        #测试完整工作流程
         cat > test_integration.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
@@ -280,33 +280,33 @@ jobs:
         void testBasicFunctionality() {
             std::cout << "Testing basic functionality..." << std::endl;
             
-            // 1. 测试模型
+            //测试模型
             Transaction t;
             t.txnId = "test_001";
             t.amount = -50.0;
             assert(t.amount == -50.0);
             assert(t.isIncome() == false);
             
-            // 2. 测试仓库
+            //测试仓库
             TransactionRepository txnRepo;
             txnRepo.save(t);
             auto allTxns = txnRepo.findAll();
             assert(allTxns.size() == 1);
             assert(allTxns[0].txnId == "test_001");
             
-            // 3. 测试分类仓库
+            //测试分类
             CategoryRepository catRepo;
             Category foodCat{"c_food", "Food", CategoryType::Expense};
             catRepo.save(foodCat);
             assert(catRepo.findByName("Food") != nullptr);
             assert(catRepo.all().size() == 1);
             
-            // 4. 测试服务
+            //测试服务
             BalanceService balanceSvc(txnRepo);
             double balance = balanceSvc.calculateBalance();
             assert(balance == -50.0);
             
-            std::cout << "✓ Basic functionality test passed" << std::endl;
+            std::cout << "Basic functionality test passed" << std::endl;
         }
         
         void testCategorizerWithKnownKeywords() {
@@ -315,20 +315,20 @@ jobs:
             CategoryRepository catRepo;
             CategorizerService categorizer(catRepo);
             
-            // 测试会匹配的关键词（使用小写）
+            //测试会匹配的关键词
             Transaction t1, t2, t3;
             
-            // Test 1: "subway" -> Transport
+            //"subway" -> Transport
             t1.merchant = "subway";
             t1.notes = "train";
             auto result1 = categorizer.autoCategorize(t1);
             
-            // Test 2: "salary" -> Salary
+            //"salary" -> Salary
             t2.merchant = "company";
             t2.notes = "monthly salary";
             auto result2 = categorizer.autoCategorize(t2);
             
-            // Test 3: "eat" -> Food
+            //"eat" -> Food
             t3.merchant = "restaurant";
             t3.notes = "eat dinner";
             auto result3 = categorizer.autoCategorize(t3);
@@ -338,13 +338,13 @@ jobs:
             std::cout << "- 'salary': " << (result2.first ? result2.first->name : "null") << std::endl;
             std::cout << "- 'eat': " << (result3.first ? result3.first->name : "null") << std::endl;
             
-            std::cout << "✓ Categorizer test passed" << std::endl;
+            std::cout << "Categorizer test passed" << std::endl;
         }
         
         void testCompleteWorkflow() {
             std::cout << "Testing complete workflow..." << std::endl;
             
-            // 初始化所有组件
+            //初始化
             TransactionRepository txnRepo;
             CategoryRepository catRepo;
             
@@ -353,31 +353,31 @@ jobs:
             TransactionService txnSvc(txnRepo, catRepo, categorizer, balanceSvc);
             ReportService reportSvc(txnRepo);
             
-            // 创建测试交易
+            //创建测试交易
             Transaction t1, t2;
             t1.txnId = "wf_001";
-            t1.amount = 1000.0;  // 收入
+            t1.amount = 1000.0;//收入
             t1.merchant = "Employer";
             t1.notes = "Monthly salary";
             
             t2.txnId = "wf_002";
-            t2.amount = -25.0;  // 支出
+            t2.amount = -25.0;//支出
             t2.merchant = "Restaurant";
             t2.notes = "Lunch";
             
-            // 添加交易
+            //添加交易
             txnSvc.addTransaction(t1);
             txnSvc.addTransaction(t2);
             
-            // 验证
+            //验证
             assert(txnRepo.findAll().size() == 2);
             
-            // 测试余额
+            //测试余额
             double balance = balanceSvc.calculateBalance();
             std::cout << "Final balance: " << balance << std::endl;
             assert(balance == 975.0);  // 1000 - 25
             
-            std::cout << "✓ Complete workflow test passed" << std::endl;
+            std::cout << "Complete workflow test passed" << std::endl;
         }
         
         int main() {
@@ -389,34 +389,34 @@ jobs:
                 testBasicFunctionality();
                 passed++;
             } catch (const std::exception& e) {
-                std::cerr << "❌ testBasicFunctionality failed: " << e.what() << std::endl;
+                std::cerr << "testBasicFunctionality failed: " << e.what() << std::endl;
             }
             
             try {
                 testCategorizerWithKnownKeywords();
                 passed++;
             } catch (const std::exception& e) {
-                std::cerr << "❌ testCategorizerWithKnownKeywords failed: " << e.what() << std::endl;
+                std::cerr << "testCategorizerWithKnownKeywords failed: " << e.what() << std::endl;
             }
             
             try {
                 testCompleteWorkflow();
                 passed++;
             } catch (const std::exception& e) {
-                std::cerr << "❌ testCompleteWorkflow failed: " << e.what() << std::endl;
+                std::cerr << "testCompleteWorkflow failed: " << e.what() << std::endl;
             }
             
             if (passed == total) {
-                std::cout << "\n✅ All integration tests passed! (" << passed << "/" << total << ")" << std::endl;
+                std::cout << "\nAll integration tests passed! (" << passed << "/" << total << ")" << std::endl;
                 return 0;
             } else {
-                std::cout << "\n⚠️  Some tests failed (" << passed << "/" << total << " passed)" << std::endl;
+                std::cout << "\nSome tests failed (" << passed << "/" << total << " passed)" << std::endl;
                 return 1;
             }
         }
         EOF
     
-    # 第五步：编译主程序（修正路径）
+    #验证代码是否能正常编译
     - name: Compile main application
       run: |
         echo "=== Compiling main application ==="
@@ -424,17 +424,21 @@ jobs:
         echo "Looking for source files..."
         
         # 编译主程序，指定include目录
+        # -std=c++17: 使用C++17标准
+        # -Iinclude: 添加include目录到头文件搜索路径
+        # -I.: 添加当前目录到头文件搜索路径
         g++ -std=c++17 -Iinclude -I. src/main.cpp -o ledger_app
         
+        # 检查编译是否成功
         if [ -f "ledger_app" ]; then
-            echo "✅ Main application compiled successfully!"
-            ls -lh ledger_app
+            echo "Main application compiled successfully!"
+            ls -lh ledger_app  # 显示生成的可执行文件信息
         else
-            echo "❌ Failed to compile main application"
-            exit 1
+            echo "Failed to compile main application"
+            exit 1  # 失败时退出，CI标记为失败
         fi
     
-    # 第六步：编译并运行单元测试（修正路径）
+    #编译并运行单元测试，确保各模块功能正常
     - name: Run model tests
       run: |
         echo "=== Running model tests ==="
@@ -442,7 +446,7 @@ jobs:
         if [ -f "test_models" ]; then
             ./test_models || echo "Model tests completed"
         else
-            echo "❌ Failed to compile model tests"
+            echo "Failed to compile model tests"
             exit 1
         fi
     
@@ -453,7 +457,7 @@ jobs:
         if [ -f "test_repositories" ]; then
             ./test_repositories || echo "Repository tests completed"
         else
-            echo "❌ Failed to compile repository tests"
+            echo "Failed to compile repository tests"
             exit 1
         fi
     
@@ -464,7 +468,7 @@ jobs:
         if [ -f "test_services" ]; then
             ./test_services || echo "Service tests completed"
         else
-            echo "❌ Failed to compile service tests"
+            echo "Failed to compile service tests"
             exit 1
         fi
     
@@ -475,30 +479,33 @@ jobs:
         if [ -f "test_integration" ]; then
             ./test_integration || echo "Integration tests completed"
         else
-            echo "❌ Failed to compile integration tests"
+            echo "Failed to compile integration tests"
             exit 1
         fi
     
-    # 第七步：运行应用程序基本测试
+    #运行应用程序基本测试，验证应用程序能正常启动和退出
     - name: Run application smoke test
       run: |
         echo "=== Running application smoke test ==="
-        # Create necessary data files
+        #创建必要的数据文件
         touch categories.csv
         touch transactions.csv
         
-        # Test that application can start and exit
+        #测试应用程序能否正常启动和退出
+        #echo -e "0\n": 模拟用户输入"0"选择退出
+        #timeout 2: 限制运行时间2秒，防止卡死
+        #|| true: 即使超时或失败，也继续执行
         echo -e "0\n" | timeout 2 ./ledger_app || true
         echo "Application smoke test completed"
     
-    # 第八步：编译检查所有头文件
+    #编译检查所有头文件，验证所有头文件的包含关系和编译兼容性
     - name: Compile check all headers
       run: |
         echo "=== Checking compilation of all header combinations ==="
-        # Test basic compilation
+        #测试主程序编译
         g++ -std=c++17 -Iinclude -I. -c src/main.cpp -o /dev/null
         
-        # Test all headers together
+        #测试所有头文件一起编译
         cat > test_all_headers.cpp << 'EOF'
         #include "include/models.h"
         #include "include/repositories.h"
@@ -506,12 +513,13 @@ jobs:
         int main() { return 0; }
         EOF
         g++ -std=c++17 -Iinclude -I. -c test_all_headers.cpp -o /dev/null
-        echo "✅ All headers compile successfully!"
+        echo "All headers compile successfully!"
     
-    # 第九步：清理测试文件
+    #清理测试文件
     - name: Clean up test files
       run: |
         echo "=== Cleaning up test files ==="
+        # 删除所有测试相关的临时文件
         rm -f test_models test_models.cpp
         rm -f test_repositories test_repositories.cpp
         rm -f test_services test_services.cpp
@@ -519,4 +527,4 @@ jobs:
         rm -f test_all_headers.cpp
         rm -f categories.csv transactions.csv
         rm -f test_categories.csv
-        echo "✅ Cleanup completed"
+        echo "Cleanup completed"
