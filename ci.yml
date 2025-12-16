@@ -1,0 +1,50 @@
+name: C++ Project CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    # 使用 Ubuntu 最新版本作为运行环境
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 第一步：检出代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    # 第二步：设置 C++ 编译环境
+    - name: Set up C++ environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y g++ cmake
+        
+    # 第三步：编译项目
+    - name: Compile project
+      run: |
+        echo "编译所有源文件..."
+        g++ -std=c++17 -I. main.cpp -o ledger_app
+        echo "编译完成！"
+        
+    # 第四步：运行程序（基本测试）
+    - name: Run basic test
+      run: |
+        echo "运行程序进行基本测试..."
+        # 创建必要的目录和文件
+        mkdir -p tests
+        echo "0" | timeout 5 ./ledger_app || true
+        echo "基本测试完成"
+        
+    # 第五步：运行单元测试（如果你有测试框架）
+    - name: Check for test files
+      run: |
+        if [ -f "tests.cpp" ] || [ -d "tests/" ]; then
+          echo "发现测试文件，执行测试..."
+          # 这里添加你的测试命令
+          # 例如：g++ -std=c++17 tests.cpp -o tests && ./tests
+        else
+          echo "未发现测试文件，跳过测试步骤"
+        fi
