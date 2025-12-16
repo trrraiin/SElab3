@@ -21,19 +21,32 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y g++ cmake build-essential
     
-    # 第三步：创建测试文件
+    # 第三步：查看项目结构
+    - name: Check project structure
+      run: |
+        echo "=== Project Structure ==="
+        find . -type f -name "*.h" -o -name "*.cpp" -o -name "*.yml" | sort
+        echo ""
+        echo "=== Include directory ==="
+        ls -la include/
+        echo ""
+        echo "=== Source directory ==="
+        ls -la src/
+    
+    # 第四步：创建测试文件（放在include目录同级）
     - name: Create unit tests
       run: |
+        # 创建测试文件
         cat > test_models.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
-        #include "models.h"
+        #include "include/models.h"
         
         void testDecimalType() {
             std::cout << "Testing Decimal type..." << std::endl;
             Decimal d = 100.5;
             assert(d == 100.5);
-            std::cout << "✓ Decimal test passed" << std::endl;
+            std::cout << "Decimal test passed" << std::endl;
         }
         
         void testTransactionIsIncome() {
@@ -44,7 +57,7 @@ jobs:
             
             t.amount = -100.0;
             assert(t.isIncome() == false);
-            std::cout << "✓ Transaction isIncome test passed" << std::endl;
+            std::cout << "Transaction isIncome test passed" << std::endl;
         }
         
         void testAccountAdjustBalance() {
@@ -56,7 +69,7 @@ jobs:
             
             acc.adjustBalance(-75.0);
             assert(acc.balance == 75.0);
-            std::cout << "✓ Account adjustBalance test passed" << std::endl;
+            std::cout << "Account adjustBalance test passed" << std::endl;
         }
         
         int main() {
@@ -65,10 +78,10 @@ jobs:
                 testDecimalType();
                 testTransactionIsIncome();
                 testAccountAdjustBalance();
-                std::cout << "\n✅ All model tests passed!" << std::endl;
+                std::cout << "\n All model tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
@@ -77,7 +90,7 @@ jobs:
         cat > test_repositories.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
-        #include "repositories.h"
+        #include "include/repositories.h"
         #include <filesystem>
         
         void testCategoryRepository() {
@@ -104,7 +117,7 @@ jobs:
             assert(repo.findByName("TestCategory") == nullptr);
             assert(repo.remove("NonExistent") == false);
             
-            std::cout << "✓ CategoryRepository tests passed" << std::endl;
+            std::cout << "CategoryRepository tests passed" << std::endl;
         }
         
         void testCSVHelpers() {
@@ -116,7 +129,7 @@ jobs:
             
             assert(unescaped == test);
             
-            std::cout << "✓ CSV helper tests passed" << std::endl;
+            std::cout << "CSV helper tests passed" << std::endl;
         }
         
         void testTransactionRepository() {
@@ -153,7 +166,7 @@ jobs:
             auto searchResults = repo.searchByKeyword("Restaurant");
             assert(searchResults.size() == 1);
             
-            std::cout << "✓ TransactionRepository tests passed" << std::endl;
+            std::cout << "TransactionRepository tests passed" << std::endl;
         }
         
         int main() {
@@ -162,10 +175,10 @@ jobs:
                 testCategoryRepository();
                 testCSVHelpers();
                 testTransactionRepository();
-                std::cout << "\n✅ All repository tests passed!" << std::endl;
+                std::cout << "\n All repository tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
@@ -174,7 +187,7 @@ jobs:
         cat > test_services.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
-        #include "services.h"
+        #include "include/services.h"
         
         void testBalanceService() {
             std::cout << "Testing BalanceService..." << std::endl;
@@ -198,7 +211,7 @@ jobs:
             // Balance should be 100 - 50 - 30 = 20
             assert(balanceSvc.calculateBalance() == 20.0);
             
-            std::cout << "✓ BalanceService tests passed" << std::endl;
+            std::cout << "BalanceService tests passed" << std::endl;
         }
         
         void testCategorizerService() {
@@ -232,7 +245,7 @@ jobs:
             assert(result3.first == nullptr);
             assert(result3.second == 0.0);
             
-            std::cout << "✓ CategorizerService tests passed" << std::endl;
+            std::cout << "CategorizerService tests passed" << std::endl;
         }
         
         void testReportService() {
@@ -249,7 +262,7 @@ jobs:
             assert(totals.first == 0.0);
             assert(totals.second == 0.0);
             
-            std::cout << "✓ ReportService tests passed" << std::endl;
+            std::cout << "ReportService tests passed" << std::endl;
         }
         
         int main() {
@@ -258,24 +271,21 @@ jobs:
                 testBalanceService();
                 testCategorizerService();
                 testReportService();
-                std::cout << "\n✅ All service tests passed!" << std::endl;
+                std::cout << "\n All service tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
         EOF
-    
-    # 第四步：创建综合测试文件
-    - name: Create integration test
-      run: |
+        
         cat > test_integration.cpp << 'EOF'
         #include <iostream>
         #include <cassert>
-        #include "models.h"
-        #include "repositories.h"
-        #include "services.h"
+        #include "include/models.h"
+        #include "include/repositories.h"
+        #include "include/services.h"
         
         void testCompleteWorkflow() {
             std::cout << "Testing complete application workflow..." << std::endl;
@@ -310,7 +320,7 @@ jobs:
             assert(catResult.first != nullptr);
             assert(catResult.first->name == "Transport");
             
-            std::cout << "✓ Complete workflow test passed" << std::endl;
+            std::cout << "Complete workflow test passed" << std::endl;
         }
         
         void testCSVPersistence() {
@@ -344,7 +354,7 @@ jobs:
             // Cleanup
             std::remove("test_categories.csv");
             
-            std::cout << "✓ CSV persistence test passed" << std::endl;
+            std::cout << "CSV persistence test passed" << std::endl;
         }
         
         int main() {
@@ -352,51 +362,81 @@ jobs:
             try {
                 testCompleteWorkflow();
                 testCSVPersistence();
-                std::cout << "\n✅ All integration tests passed!" << std::endl;
+                std::cout << "\n All integration tests passed!" << std::endl;
                 return 0;
             } catch (const std::exception& e) {
-                std::cerr << "❌ Test failed: " << e.what() << std::endl;
+                std::cerr << "Test failed: " << e.what() << std::endl;
                 return 1;
             }
         }
         EOF
     
-    # 第五步：编译主程序
+    # 第五步：编译主程序（修正路径）
     - name: Compile main application
       run: |
-        echo "Compiling main application..."
-        g++ -std=c++17 -I. src/main.cpp -o ledger_app
-        echo "Main application compiled successfully!"
-        ls -lh ledger_app
+        echo "=== Compiling main application ==="
+        echo "Current directory: $(pwd)"
+        echo "Looking for source files..."
+        
+        # 编译主程序，指定include目录
+        g++ -std=c++17 -Iinclude -I. src/main.cpp -o ledger_app
+        
+        if [ -f "ledger_app" ]; then
+            echo "Main application compiled successfully!"
+            ls -lh ledger_app
+        else
+            echo "Failed to compile main application"
+            exit 1
+        fi
     
-    # 第六步：编译并运行单元测试
+    # 第六步：编译并运行单元测试（修正路径）
     - name: Compile and run model tests
       run: |
         echo "=== Compiling model tests ==="
-        g++ -std=c++17 -I. test_models.cpp -o test_models
-        echo "Running model tests..."
-        ./test_models
+        g++ -std=c++17 -Iinclude -I. test_models.cpp -o test_models
+        if [ -f "test_models" ]; then
+            echo "Running model tests..."
+            ./test_models
+        else
+            echo "Failed to compile model tests"
+            exit 1
+        fi
     
     - name: Compile and run repository tests
       run: |
         echo "=== Compiling repository tests ==="
-        g++ -std=c++17 -I. test_repositories.cpp -o test_repositories
-        echo "Running repository tests..."
-        ./test_repositories
+        g++ -std=c++17 -Iinclude -I. test_repositories.cpp -o test_repositories
+        if [ -f "test_repositories" ]; then
+            echo "Running repository tests..."
+            ./test_repositories
+        else
+            echo "Failed to compile repository tests"
+            exit 1
+        fi
     
     - name: Compile and run service tests
       run: |
         echo "=== Compiling service tests ==="
-        g++ -std=c++17 -I. test_services.cpp -o test_services
-        echo "Running service tests..."
-        ./test_services
+        g++ -std=c++17 -Iinclude -I. test_services.cpp -o test_services
+        if [ -f "test_services" ]; then
+            echo "Running service tests..."
+            ./test_services
+        else
+            echo "Failed to compile service tests"
+            exit 1
+        fi
     
     - name: Compile and run integration tests
       run: |
         echo "=== Compiling integration tests ==="
-        g++ -std=c++17 -I. test_integration.cpp -o test_integration
-        echo "Running integration tests..."
-        ./test_integration
+        g++ -std=c++17 -Iinclude -I. test_integration.cpp -o test_integration
+        if [ -f "test_integration" ]; then
+            echo "Running integration tests..."
+            ./test_integration
+        else
+            echo "Failed to compile integration tests"
+            exit 1
+        fi
     
     # 第七步：运行应用程序基本测试
     - name: Run application smoke test
@@ -415,16 +455,16 @@ jobs:
       run: |
         echo "=== Checking compilation of all header combinations ==="
         # Test basic compilation
-        g++ -std=c++17 -I. -c src/main.cpp -o /dev/null
+        g++ -std=c++17 -Iinclude -I. -c src/main.cpp -o /dev/null
         
-        # Test models.h standalone
-        cat > test_headers.cpp << 'EOF'
-        #include "models.h"
-        #include "repositories.h"
-        #include "services.h"
+        # Test all headers together
+        cat > test_all_headers.cpp << 'EOF'
+        #include "include/models.h"
+        #include "include/repositories.h"
+        #include "include/services.h"
         int main() { return 0; }
         EOF
-        g++ -std=c++17 -I. -c test_headers.cpp -o /dev/null
+        g++ -std=c++17 -Iinclude -I. -c test_all_headers.cpp -o /dev/null
         echo "All headers compile successfully!"
     
     # 第九步：清理测试文件
@@ -435,6 +475,7 @@ jobs:
         rm -f test_repositories test_repositories.cpp
         rm -f test_services test_services.cpp
         rm -f test_integration test_integration.cpp
-        rm -f test_headers.cpp
+        rm -f test_all_headers.cpp
         rm -f categories.csv transactions.csv
+        rm -f test_categories.csv
         echo "Cleanup completed"
